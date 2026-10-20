@@ -10,6 +10,12 @@ public class PlayerMove : MonoBehaviour
     private Rigidbody2D rigid;
     private SpriteRenderer spriteRenderer;
 
+    //무게, 체력, 저장공간
+    public float mass; //무게
+    public float hp; //체력
+    public float bagsize; //가방 사이즈
+
+
     // 입력받은 방향 벡터를 저장할 변수
     private Vector2 moveInput;
 
