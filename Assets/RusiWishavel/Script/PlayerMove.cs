@@ -1,53 +1,63 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
-// 플레이어의 2D 이동 및 방향 전환을 담당하는 클래스
 public class PlayerMove : MonoBehaviour
 {
-    // 물리 이동 및 2D 이미지 연산을 위한 컴포넌트 변수
     private Rigidbody2D rigid;
-    private SpriteRenderer spriteRenderer;
 
-    // 이동 속도 변수 추가
-    public float MoveSpeed = 5f;
+    [Header("이동 관련 설정")]
+    public float moveSpeed = 5f;      // W 키 누를 때 직진 속도
+    public float rotateSpeed = 50f;   // A/D 키 누를 때 회전 속도 (도/초)
+    public float brakePower = 10f;     // S 키 누를 때 감속 및 후진 가속도 (2~5 추천)
 
-    // 무게, 체력, 저장공간
-    public float mass; // 무게
-    public float hp; // 체력
-    public float bagsize; // 가방 사이즈
+    [Header("플레이어 정보")]
+    public float hp = 10f;
 
-    // 입력받은 방향 벡터를 저장할 변수
-    private Vector2 moveInput;
-
-    // 게임 시작 시 컴포넌트를 가져옴 (초기화)
     void Awake()
     {
-        // 오브젝트에 붙어있는 Rigidbody2D와 SpriteRenderer 컴포넌트를 참조
         rigid = GetComponent<Rigidbody2D>();
-        spriteRenderer = GetComponent<SpriteRenderer>();
     }
 
-    // 매 프레임마다 호출 (입력 처리용)
     void Update()
     {
-        // 방향키 또는 WASD 입력을 즉시 가져옴 (-1, 0, 1 중 하나)
-        float moveHorizontal = Input.GetAxisRaw("Horizontal");
-        float moveVertical = Input.GetAxisRaw("Vertical");
+        // 1. A, D 키 회전
+        float rotateInput = Input.GetAxisRaw("Horizontal");
+        transform.Rotate(0, 0, -rotateInput * rotateSpeed * Time.deltaTime);
 
-        // 대각선 이동 시 속도가 빠르지 않도록 대각선 길이를 1로 정규화(.normalized)
-        moveInput = new Vector2(moveHorizontal, moveVertical).normalized;
+        // 2. 매 프레임마다 체력 및 씬 전환 체크 함수 호출
+        CheckGameOver();
+    }
 
-        // 좌우 입력이 있을 때만 스프라이트 이미지의 반전(좌/우 바라보기)을 처리
-        if (moveHorizontal != 0)
+    void FixedUpdate()
+    {
+        // W 키 (전진)
+        if (Input.GetKey(KeyCode.W))
         {
-            // 왼쪽 이동 중이면 true(좌우 반전), 오른쪽 이동 중이면 false
-            spriteRenderer.flipX = moveHorizontal < 0;
+            rigid.linearVelocity = transform.up * moveSpeed;
+        }
+        // S 키 (천천히 감속 후 자연스러운 후진)
+        else if (Input.GetKey(KeyCode.S))
+        {
+            // 목표 속도를 '후진 방향(-transform.up)'으로 지정합니다.
+            // 속도가 줄어들다가 0을 거쳐 자연스럽게 뒤로 움직이게 됩니다.
+            Vector2 reverseTarget = -transform.up * (moveSpeed * 0.5f); // 후진 속도는 전진의 절반
+            rigid.linearVelocity = Vector2.MoveTowards(rigid.linearVelocity, reverseTarget, brakePower * Time.fixedDeltaTime);
+        }
+        // 아무 키도 안 누름 (자연 관성 정지)
+        else
+        {
+            rigid.linearVelocity = Vector2.MoveTowards(rigid.linearVelocity, Vector2.zero, 2f * Time.fixedDeltaTime);
         }
     }
 
-    // 물리 연산 주기에 맞춰 고정적으로 호출 (물리 이동 처리용)
-    void FixedUpdate()
+    // 씬 전환 및 게임 오버 체크 함수
+    void CheckGameOver()
     {
-        // 54번째 줄: currentSpeed를 정상적으로 참조하여 이동 처리
-        rigid.linearVelocity = new Vector2(moveInput.x * MoveSpeed, moveInput.y * MoveSpeed);
+        // 정확히 0f가 아닐 수 있으므로 <= 0f로 비교합니다.
+        if (hp <= 0f)
+        {
+            Debug.Log("게임 오버");
+            SceneManager.LoadScene("MenuScene");
+        }
     }
 }
